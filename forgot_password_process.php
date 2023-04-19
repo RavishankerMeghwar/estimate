@@ -1,39 +1,52 @@
-<?php 
+<?php
 // PHP code to generate a unique token and store it in the database
 require_once("./db_connection.php");
 
 // Get the input data from the API request
-$email = $_POST['email'];
+$username = $_POST['username'];
 
 // Check if the user exists in the database
-$user_query = "SELECT * FROM users WHERE email = '$email'";
+$user_query = "SELECT * FROM users WHERE username = '$username'";
 $user_result = mysqli_query($conn, $user_query);
 $user_data = mysqli_fetch_assoc($user_result);
 
 if ($user_data) {
   // Generate a unique token
-  $token = bin2hex(random_bytes(32));
-
-  // Calculate the expiration time (24 hours from now)
-  $expiration_time = time() + 24 * 60 * 60;
+  $token = rand(999999, 9999999);
 
   // Store the token in the database
-  $insert_query = "INSERT INTO password_reset_tokens (email, token, expiration_time) VALUES ('$email', '$token', $expiration_time)";
-  mysqli_query($conn, $insert_query);
+  $update_query = "UPDATE users SET access_token = '$token' WHERE username = '$username'";
+  $update_result = mysqli_query($conn, $update_query);
 
-  // Send the email to the user
-  $to = $email;
-  $subject = "Reset your password";
-  $message = "Please click on the following link to reset your password: http://example.com/reset_password.php?token=$token";
-  $headers = "From: Your Website <noreply@yourwebsite.com>";
-  mail($to, $subject, $message, $headers);
+  if ($update_result) {
+    // Send the token to the user via email
+    // This code assumes that you have a function called send_email() that sends an email to the user with the token.
+    // send_email($email, $token);
 
-  // Create a JSON response
-  $response = array(
-    'status' => 'success',
-    'message' => 'An email has been sent to your email address with instructions on how to reset your password.',
-    'detail' => '',
-  );
+    // Create a JSON response
+    $response = array(
+      'status' => 'success',
+      'message' => 'Check your email to reset your password.',
+      'detail' => '',
+    );
+    $json = json_encode($response);
+    header('Content-Type: application/json');
+    http_response_code(200);
+    echo $json;
+    die;
+  } else {
+    // Error updating the token in the database
+    $response = array(
+      'status' => 'error',
+      'message' => 'An error occurred. Please try again later.',
+      'detail' => '',
+    );
+    $json = json_encode($response);
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo $json;
+    die;
+  }
 } else {
   // User doesn't exist
   $response = array(
@@ -41,4 +54,9 @@ if ($user_data) {
     'message' => 'The email address you entered is not registered.',
     'detail' => ''
   );
+  $json = json_encode($response);
+  header('Content-Type: application/json');
+  http_response_code(400);
+  echo $json;
+  die;
 }
